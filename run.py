@@ -55,11 +55,11 @@ class TSPVRPSolver:
         try:
             # Exécuter le script calculate_distances.py
             process = subprocess.run(
-                [sys.executable, r"C:\Users\yoga\Desktop\streamlit_TSP_VRP\calculate_distances.py", place_name],
+                [sys.executable, "calculate_distances.py", place_name],
                 input=locations_input,
                 text=True,
                 capture_output=True,
-                timeout=60
+                timeout=6000
             )
             
             if process.returncode != 0:
