@@ -9,6 +9,7 @@ import sys
 import tempfile
 import os
 from io import StringIO
+from pathlib import Path
 
 # Configuration de la page
 st.set_page_config(
@@ -24,6 +25,8 @@ class TSPVRPSolver:
         self.locations = []
         self.distance_matrix = None
         self.place_name = ""
+        # Get the directory where the current script is located
+        self.script_dir = Path(__file__).parent.absolute()
     
     def load_locations_from_file(self, file_content):
         """Charge les lieux depuis le contenu du fichier"""
@@ -52,14 +55,24 @@ class TSPVRPSolver:
         # Préparer l'input pour le script calculate_distances
         locations_input = "\n".join([f"{name},{lat},{lon}" for name, lat, lon in self.locations])
         
+        # Construct the path to calculate_distances.py
+        calculate_distances_path = self.script_dir / "calculate_distances.py"
+        
+        # Check if the file exists
+        if not calculate_distances_path.exists():
+            st.error(f"Le fichier calculate_distances.py n'existe pas dans {self.script_dir}")
+            st.info("Veuillez vous assurer que calculate_distances.py est dans le même dossier que cette application.")
+            return None
+        
         try:
             # Exécuter le script calculate_distances.py
             process = subprocess.run(
-                [sys.executable, "calculate_distances.py", place_name],
+                [sys.executable, str(calculate_distances_path), place_name],
                 input=locations_input,
                 text=True,
                 capture_output=True,
-                timeout=6000
+                timeout=6000,
+                cwd=str(self.script_dir)  # Set working directory
             )
             
             if process.returncode != 0:
@@ -90,6 +103,15 @@ class TSPVRPSolver:
         if self.distance_matrix is None:
             return None, None
         
+        # Construct the path to TSP_script.py
+        tsp_script_path = self.script_dir / "TSP_script.py"
+        
+        # Check if the file exists
+        if not tsp_script_path.exists():
+            st.error(f"Le fichier TSP_script.py n'existe pas dans {self.script_dir}")
+            st.info("Veuillez vous assurer que TSP_script.py est dans le même dossier que cette application.")
+            return None, None
+        
         # Créer un fichier CSV temporaire avec la matrice
         with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as temp_file:
             # Écrire l'en-tête
@@ -105,10 +127,11 @@ class TSPVRPSolver:
         try:
             # Exécuter TSP_script.py
             process = subprocess.run(
-                [sys.executable, "TSP_script.py", temp_file_path],
+                [sys.executable, str(tsp_script_path), temp_file_path],
                 capture_output=True,
                 text=True,
-                timeout=120
+                timeout=120,
+                cwd=str(self.script_dir)  # Set working directory
             )
             
             # Nettoyer le fichier temporaire
@@ -141,6 +164,15 @@ class TSPVRPSolver:
         if self.distance_matrix is None:
             return None, None
         
+        # Construct the path to VRP_script.py
+        vrp_script_path = self.script_dir / "VRP_script.py"
+        
+        # Check if the file exists
+        if not vrp_script_path.exists():
+            st.error(f"Le fichier VRP_script.py n'existe pas dans {self.script_dir}")
+            st.info("Veuillez vous assurer que VRP_script.py est dans le même dossier que cette application.")
+            return None, None
+        
         # Créer un fichier temporaire avec la matrice
         with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as temp_file:
             # Sauvegarder la matrice au format CSV
@@ -150,10 +182,11 @@ class TSPVRPSolver:
         try:
             # Exécuter VRP_script.py
             process = subprocess.run(
-                [sys.executable, "VRP_script.py", temp_file_path, str(num_vehicles)],
+                [sys.executable, str(vrp_script_path), temp_file_path, str(num_vehicles)],
                 capture_output=True,
                 text=True,
-                timeout=120
+                timeout=120,
+                cwd=str(self.script_dir)  # Set working directory
             )
             
             # Nettoyer le fichier temporaire
@@ -282,6 +315,15 @@ class MapVisualizer:
 def main():
     st.title("🗺️ Professional TSP/VRP Solver")
     st.markdown("Interface professionnelle utilisant vos scripts optimisés")
+    
+    # Debug information
+    with st.expander("🔧 Debug Information"):
+        script_dir = Path(__file__).parent.absolute()
+        st.write(f"Script directory: {script_dir}")
+        st.write("Files in directory:")
+        for file_path in script_dir.glob("*"):
+            st.write(f"  - {file_path.name}")
+    
     st.markdown("---")
     
     # Initialiser le solver
@@ -312,9 +354,16 @@ def main():
         
         # Informations sur les fichiers requis
         st.subheader("📁 Fichiers requis")
-        st.write("✅ TSP_script.py")
-        st.write("✅ calculate_distances.py")
-        st.write("⚠️ VRP_script.py (optionnel)")
+        script_dir = Path(__file__).parent.absolute()
+        
+        # Check file existence
+        required_files = ["calculate_distances.py", "TSP_script.py", "VRP_script.py"]
+        for file_name in required_files:
+            file_path = script_dir / file_name
+            if file_path.exists():
+                st.write(f"✅ {file_name}")
+            else:
+                st.write(f"❌ {file_name}")
     
     # Interface principale
     if uploaded_file is not None:
